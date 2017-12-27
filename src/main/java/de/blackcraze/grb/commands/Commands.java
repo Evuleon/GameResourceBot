@@ -275,32 +275,34 @@ public final class Commands {
         if (scanner.hasNext()) {
             String action = scanner.next();
             switch (action) {
-            case "delete":
-                checkPublic(message);
-                String memberName = scanner.next();
-                mates = getMateDao().findByName(memberName);
-                if (!mates.isEmpty()) {
-                    // Finally delete the member.
-                    for (Mate mate : mates) {
-                        getMateDao().delete(mate);
+                case "delete":
+                    checkPublic(message);
+                    String memberName = scanner.next();
+                    mates = getMateDao().findByName(memberName);
+                    if (!mates.isEmpty()) {
+                        // Finally delete the member.
+                        for (Mate mate : mates) {
+                            getMateDao().delete(mate);
+                        }
+                        message.addReaction(Speaker.Reaction.SUCCESS).queue();
+                    } else {
+                        // No Mate with given name.
+                        message.addReaction(Speaker.Reaction.FAILURE).queue();
                     }
-                    message.addReaction(Speaker.Reaction.SUCCESS).queue();
-                } else {
-                    // No Mate with given name.
+                    break;
+                default:
+                    // Wrong argument!
                     message.addReaction(Speaker.Reaction.FAILURE).queue();
-                }
-                break;
-            default:
-                // Wrong argument!
-                message.addReaction(Speaker.Reaction.FAILURE).queue();
-                break;
+                    break;
             }
         } else {
             // List Users
             Locale locale = getResponseLocale(message);
             List<List<String>> rows = getMateDao().listOrderByOldestStock(locale);
+            String header = Resource.getString("USERS_LIST_HEADER", locale);
+            header = String.format(header, rows.size());
             PrintableTable table = new PrintableTable(
-                    Resource.getString("USERS_LIST_HEADER", locale), Collections.emptyList(),
+                    header, Collections.emptyList(),
                     Arrays.asList(Resource.getString("USER", locale),
                             Resource.getString("POPULATED", locale),
                             Resource.getString("OLDEST_STOCK", locale)),
@@ -398,29 +400,29 @@ public final class Commands {
         if (scanner.hasNext()) {
             String subCommand = scanner.next();
             switch (subCommand) {
-            case "create":
-                checkPublic(message);
-                groupCreate(scanner, message);
-                break;
-            case "delete":
-                checkPublic(message);
-                groupDelete(scanner, message);
-                break;
-            case "add":
-                checkPublic(message);
-                groupAdd(scanner, message);
-                break;
-            case "remove":
-                checkPublic(message);
-                groupRemove(scanner, message);
-                break;
-            case "list":
-                groupList(scanner, message);
-                break;
-            default:
-                Speaker.err(message,
-                        Resource.getString("GROUP_SUBCOMMAND_UNKNOWN", getResponseLocale(message)));
-                break;
+                case "create":
+                    checkPublic(message);
+                    groupCreate(scanner, message);
+                    break;
+                case "delete":
+                    checkPublic(message);
+                    groupDelete(scanner, message);
+                    break;
+                case "add":
+                    checkPublic(message);
+                    groupAdd(scanner, message);
+                    break;
+                case "remove":
+                    checkPublic(message);
+                    groupRemove(scanner, message);
+                    break;
+                case "list":
+                    groupList(scanner, message);
+                    break;
+                default:
+                    Speaker.err(message, Resource.getString("GROUP_SUBCOMMAND_UNKNOWN",
+                            getResponseLocale(message)));
+                    break;
             }
         } else {
             groupList(scanner, message);
@@ -629,7 +631,9 @@ public final class Commands {
                 Speaker.sayCode(channel, prettyPrintMate(mates, locale));
                 return;
             }
+            final StockTypeComparator comp = new StockTypeComparator(locale);
             List<StockType> types = getStockTypeDao().findByNameLike(nameOptional.get(), locale);
+            types.sort(comp);
             if (!types.isEmpty()) {
                 Speaker.sayCode(channel, prettyPrintStocks(types, locale));
                 return;
@@ -639,7 +643,7 @@ public final class Commands {
             if (groupOpt.isPresent()) {
                 List<StockType> groupTypes = groupOpt.get().getTypes();
                 if (!groupTypes.isEmpty()) {
-                    groupTypes.sort(new StockTypeComparator(locale));
+                    groupTypes.sort(comp);
                     Speaker.sayCode(channel, prettyPrintStocks(groupTypes, locale));
                 } else {
                     String msg = String.format(Resource.getString("GROUP_EMPTY", locale),
